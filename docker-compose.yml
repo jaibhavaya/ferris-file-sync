@@ -10,6 +10,15 @@ services:
       POSTGRES_DB: ferris_file_sync
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
 volumes:
   postgres_data:
+
