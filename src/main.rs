@@ -9,20 +9,15 @@ use std::time::Duration;
 async fn main() -> Result<(), Error> {
     dotenv::dotenv().ok();
 
-    // Load configuration
     let config = config::Config::from_env().expect("Failed to load config");
 
-    // Set up database connection
     let pool = db::connect(&config.database_url).await.expect("Failed to connect to database");
 
-    // Run migrations
     db::run_migrations(&pool).await.expect("Failed to run migrations");
 
-    // Load AWS credentials and create SQS client
     let mut aws_config_builder = aws_config::defaults(BehaviorVersion::latest())
         .region(aws_types::region::Region::new(config.aws_region.clone()));
 
-    // Use local endpoint if specified (for development with LocalStack)
     if let Some(endpoint) = &config.s3_endpoint {
         aws_config_builder = aws_config_builder.endpoint_url(endpoint.clone());
     }
@@ -53,7 +48,6 @@ async fn main() -> Result<(), Error> {
                     // This is where you'd parse the message and perform actions
                 }
 
-                // Delete the message from the queue after processing
                 if let Some(receipt_handle) = &message.receipt_handle {
                     client
                         .delete_message()
