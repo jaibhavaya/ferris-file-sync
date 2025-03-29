@@ -1,5 +1,7 @@
+pub mod encryption;
 pub mod migrations;
 pub mod models;
+pub mod onedrive;
 
 use sqlx::postgres::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -11,9 +13,10 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
 }
 
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(include_str!("../../migrations/20240324000001_create_files_table.sql"))
-        .execute(pool)
+    // Use SQLx's built-in migration instead of manual queries
+    sqlx::migrate!("./migrations")
+        .run(pool)
         .await?;
-
+    
     Ok(())
 }

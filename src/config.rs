@@ -4,6 +4,7 @@ pub struct Config {
     pub aws_region: String,
     pub s3_bucket: String,
     pub s3_endpoint: Option<String>,
+    pub encryption_key: String,
 }
 
 impl Config {
@@ -13,7 +14,9 @@ impl Config {
         let aws_region = std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
         let s3_bucket = std::env::var("S3_BUCKET")?;
         let s3_endpoint = std::env::var("S3_ENDPOINT").ok();
+        let encryption_key = std::env::var("ENCRYPTION_KEY")
+            .unwrap_or_else(|_| "default-dev-key-please-change-in-production".to_string());
 
-        Ok(Config { database_url, queue_url, aws_region, s3_bucket, s3_endpoint })
+        Ok(Config { database_url, queue_url, aws_region, s3_bucket, s3_endpoint, encryption_key })
     }
 }

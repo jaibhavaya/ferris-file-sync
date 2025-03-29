@@ -34,6 +34,7 @@ No traces. No failures. No questions.
    QUEUE_URL=http://localhost:4566/000000000000/ferris-file-sync-queue
    S3_BUCKET=ferris-file-sync-bucket
    S3_ENDPOINT=http://localhost:4566
+   ENCRYPTION_KEY=your-secret-key-for-token-encryption
    ```
 
 5. **Handle initial database setup**

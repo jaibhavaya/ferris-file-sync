@@ -6,7 +6,7 @@ description = "A microservice to sync files from S3 to Microsoft OneDrive"
 authors = ["Jacob Lawson <jaibhavaya@gmail.com>"]
 
 [dependencies]
-sqlx = { version = "0.8.3", features = ["runtime-tokio-native-tls", "postgres", "chrono"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio-native-tls", "postgres", "chrono", "uuid"] }
 
 chrono = { version = "0.4", features = ["serde"] }
 
@@ -26,6 +26,11 @@ serde_json = "1.0.114"
 # Error handling
 anyhow = "1.0.81"
 thiserror = "2.0.12"
+
+# Encryption
+aes-gcm = "0.10.3"
+base64 = "0.21.7"
+rand = "0.8.5"
 
 # Logging
 tracing = "0.1.40"
