@@ -20,3 +20,8 @@ target/
 
 /target
 .env
+
+# Test data files
+/test-data/*
+!test-data/README.md
+*.txt

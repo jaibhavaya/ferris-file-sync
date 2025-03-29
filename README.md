@@ -18,9 +18,13 @@ No traces. No failures. No questions.
    docker-compose up -d
    ```
 
-3. **Create SQS Queue**
+3. **Create SQS Queue and S3 Bucket**
    ```bash
+   # Create SQS queue
    aws sqs create-queue --queue-name ferris-file-sync-queue --endpoint-url=http://localhost:4566 --region us-east-1
+   
+   # Create S3 bucket
+   aws s3 mb s3://ferris-file-sync-bucket --endpoint-url=http://localhost:4566 --region us-east-1
    ```
 
 4. **Set up environment**
@@ -28,6 +32,8 @@ No traces. No failures. No questions.
    ```
    DATABASE_URL=postgres://postgres:postgres@localhost:5433/ferris_file_sync
    QUEUE_URL=http://localhost:4566/000000000000/ferris-file-sync-queue
+   S3_BUCKET=ferris-file-sync-bucket
+   S3_ENDPOINT=http://localhost:4566
    ```
 
 5. **Handle initial database setup**
@@ -53,10 +59,30 @@ No traces. No failures. No questions.
    cargo run
    ```
 
-7. **Test SQS integration**
-   Send a test message to the queue:
+7. **Test SQS and S3 integration**
+   
+   **Upload a test file to S3:**
    ```bash
-   aws sqs send-message --queue-url http://localhost:4566/000000000000/ferris-file-sync-queue --message-body "Hello from SQS!" --endpoint-url=http://localhost:4566 --region us-east-1
+   # Create a test file in the test-data directory (which is gitignored)
+   mkdir -p test-data
+   echo "This is a test file for S3 to OneDrive sync" > test-data/test-file.txt
+   
+   # Upload the file to S3
+   aws s3 cp test-data/test-file.txt s3://ferris-file-sync-bucket/ --endpoint-url=http://localhost:4566 --region us-east-1
+   ```
+   
+   **List files in the bucket:**
+   ```bash
+   aws s3 ls s3://ferris-file-sync-bucket/ --endpoint-url=http://localhost:4566 --region us-east-1
+   ```
+   
+   **Send a test message to the SQS queue:**
+   ```bash
+   aws sqs send-message \
+     --queue-url http://localhost:4566/000000000000/ferris-file-sync-queue \
+     --message-body '{"bucket":"ferris-file-sync-bucket","key":"test-file.txt","destination":"/Documents/"}' \
+     --endpoint-url=http://localhost:4566 \
+     --region us-east-1
    ```
    
    You should see the message being processed in your application logs.
