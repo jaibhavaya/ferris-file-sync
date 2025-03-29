@@ -6,7 +6,6 @@ mod onedrive;
 use anyhow::{Context, Result};
 use aws_config::BehaviorVersion;
 use aws_sdk_sqs::{Client, Error as SqsError};
-use chrono::Utc;
 use std::{cmp::min, time::Duration};
 
 use crate::messages::{parse_message, MessageType};
@@ -15,20 +14,15 @@ use crate::messages::{parse_message, MessageType};
 async fn main() -> Result<(), SqsError> {
     dotenv::dotenv().ok();
 
-    // Load configuration
     let config = config::Config::from_env().expect("Failed to load config");
 
-    // Set up database connection
     let pool = db::connect(&config.database_url).await.expect("Failed to connect to database");
 
-    // Run migrations
     db::run_migrations(&pool).await.expect("Failed to run migrations");
 
-    // Load AWS credentials and create SQS client
     let mut aws_config_builder = aws_config::defaults(BehaviorVersion::latest())
         .region(aws_types::region::Region::new(config.aws_region.clone()));
 
-    // Use local endpoint if specified (for development with LocalStack)
     if let Some(endpoint) = &config.s3_endpoint {
         aws_config_builder = aws_config_builder.endpoint_url(endpoint.clone());
     }
@@ -53,7 +47,6 @@ async fn main() -> Result<(), SqsError> {
                 println!("Processing message ID: {}", message.message_id().unwrap_or("unknown"));
 
                 if let Some(body) = &message.body {
-                    // Process the message
                     match process_message(body, &pool, &config).await {
                         Ok(_) => println!("Message processed successfully"),
                         Err(e) => println!("Error processing message: {}", e),
@@ -79,16 +72,13 @@ async fn main() -> Result<(), SqsError> {
     }
 }
 
-/// Process an SQS message based on its type
 async fn process_message(
     message_body: &str,
     pool: &sqlx::PgPool,
     config: &config::Config,
 ) -> Result<(), anyhow::Error> {
-    // Parse the message
     let message = parse_message(message_body).context("Failed to parse message")?;
 
-    // Initialize OneDrive client if needed
     let onedrive_client = onedrive::OneDriveClient::new(
         pool.clone(),
         config.encryption_key.clone(),
@@ -96,7 +86,6 @@ async fn process_message(
         config.onedrive_client_secret.clone(),
     );
 
-    // Handle different message types
     match message {
         MessageType::OneDriveAuthorization { payload } => {
             println!(
@@ -104,7 +93,6 @@ async fn process_message(
                 payload.owner_id, payload.user_id
             );
 
-            // First store the refresh token
             db::onedrive::save_refresh_token(
                 pool,
                 payload.owner_id,
@@ -117,7 +105,6 @@ async fn process_message(
 
             println!("OneDrive refresh token saved for owner: {}", payload.owner_id);
 
-            // Immediately validate the token by trying to get an access token
             match onedrive_client.get_access_token(payload.owner_id).await {
                 Ok(access_token) => {
                     println!("Successfully validated refresh token and obtained access token");
@@ -127,7 +114,6 @@ async fn process_message(
                 Err(e) => {
                     println!("Warning: Saved refresh token, but token validation failed: {}", e);
                     println!("The refresh token may be invalid or expired");
-                    // We don't return an error here as we've saved the token, but log the warning
                 }
             }
         }
@@ -137,7 +123,6 @@ async fn process_message(
             println!("  - Source: s3://{}/{}", payload.bucket, payload.key);
             println!("  - Destination: {}", payload.destination);
 
-            // First, check if we have a valid integration with OneDrive by trying to get an access token
             match onedrive_client.get_access_token(payload.owner_id).await {
                 Ok(access_token) => {
                     println!("Successfully obtained access token: {}...", &access_token[0..20]);
