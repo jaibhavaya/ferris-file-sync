@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{query_as, PgPool};
 
 use crate::db::encryption::{decrypt_token, encrypt_token};
-use crate::db::models::{OneDriveIntegration, OneDriveRefreshToken, OneDriveAccessToken};
+use crate::db::models::{OneDriveAccessToken, OneDriveIntegration, OneDriveRefreshToken};
 
 pub async fn get_integration(pool: &PgPool, owner_id: i64) -> Result<Option<OneDriveIntegration>> {
     let integration = query_as!(
@@ -59,7 +59,7 @@ pub async fn get_access_token(
         r#"
         SELECT encrypted_access_token, access_token_expires_at
         FROM onedrive_integrations
-        WHERE owner_id = $1 
+        WHERE owner_id = $1
           AND is_active = true
           AND encrypted_access_token IS NOT NULL
           AND access_token_expires_at > NOW()
@@ -72,10 +72,11 @@ pub async fn get_access_token(
     match record {
         Some(record) => {
             // Decrypt the access token
-            let access_token = decrypt_token(&record.encrypted_access_token.unwrap_or_default(), encryption_key)?;
+            let access_token =
+                decrypt_token(&record.encrypted_access_token.unwrap_or_default(), encryption_key)?;
 
-            Ok(Some(OneDriveAccessToken { 
-                access_token, 
+            Ok(Some(OneDriveAccessToken {
+                access_token,
                 expires_at: record.access_token_expires_at.unwrap(),
             }))
         }
@@ -101,7 +102,7 @@ pub async fn save_refresh_token(
             (owner_id, user_id, encrypted_refresh_token, is_active)
         VALUES
             ($1, $2, $3, true)
-        ON CONFLICT (owner_id) 
+        ON CONFLICT (owner_id)
         DO UPDATE SET
             user_id = $2,
             encrypted_refresh_token = $3,
@@ -134,7 +135,7 @@ pub async fn save_access_token(
         OneDriveIntegration,
         r#"
         UPDATE onedrive_integrations
-        SET 
+        SET
             encrypted_access_token = $2,
             access_token_expires_at = $3,
             updated_at = NOW()
@@ -165,3 +166,4 @@ pub async fn deactivate_integration(pool: &PgPool, owner_id: i64) -> Result<bool
 
     Ok(result.rows_affected() > 0)
 }
+

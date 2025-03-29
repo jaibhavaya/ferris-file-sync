@@ -5,6 +5,8 @@ pub struct Config {
     pub s3_bucket: String,
     pub s3_endpoint: Option<String>,
     pub encryption_key: String,
+    pub onedrive_client_id: String,
+    pub onedrive_client_secret: String,
 }
 
 impl Config {
@@ -16,7 +18,20 @@ impl Config {
         let s3_endpoint = std::env::var("S3_ENDPOINT").ok();
         let encryption_key = std::env::var("ENCRYPTION_KEY")
             .unwrap_or_else(|_| "default-dev-key-please-change-in-production".to_string());
+        let onedrive_client_id =
+            std::env::var("ONEDRIVE_CLIENT_ID").unwrap_or_else(|_| "your-client-id".to_string());
+        let onedrive_client_secret = std::env::var("ONEDRIVE_CLIENT_SECRET")
+            .unwrap_or_else(|_| "your-client-secret".to_string());
 
-        Ok(Config { database_url, queue_url, aws_region, s3_bucket, s3_endpoint, encryption_key })
+        Ok(Config {
+            database_url,
+            queue_url,
+            aws_region,
+            s3_bucket,
+            s3_endpoint,
+            encryption_key,
+            onedrive_client_id,
+            onedrive_client_secret,
+        })
     }
 }

@@ -20,13 +20,11 @@ pub struct OneDriveIntegration {
     pub updated_at: DateTime<Utc>,
 }
 
-// Represents a refresh token
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OneDriveRefreshToken {
     pub refresh_token: String,
 }
 
-// Represents an access token with expiry
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OneDriveAccessToken {
     pub access_token: String,

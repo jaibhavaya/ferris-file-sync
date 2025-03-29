@@ -35,6 +35,8 @@ No traces. No failures. No questions.
    S3_BUCKET=ferris-file-sync-bucket
    S3_ENDPOINT=http://localhost:4566
    ENCRYPTION_KEY=your-secret-key-for-token-encryption
+   ONEDRIVE_CLIENT_ID=your-microsoft-app-client-id
+   ONEDRIVE_CLIENT_SECRET=your-microsoft-app-client-secret
    ```
 
 5. **Handle initial database setup**
@@ -60,7 +62,7 @@ No traces. No failures. No questions.
    cargo run
    ```
 
-7. **Test SQS and S3 integration**
+7. **Test SQS, S3, and OneDrive integration**
    
    **Upload a test file to S3:**
    ```bash
@@ -77,8 +79,11 @@ No traces. No failures. No questions.
    aws s3 ls s3://ferris-file-sync-bucket/ --endpoint-url=http://localhost:4566 --region us-east-1
    ```
    
-   **Send a test message to the SQS queue:**
+   **Testing OneDrive Integration:**
    
+   The integration with OneDrive requires two steps:
+   
+   1. **First, store a refresh token by sending an authorization message:**
    ```bash
    # OneDrive authorization message
    aws sqs send-message \
@@ -95,7 +100,8 @@ No traces. No failures. No questions.
      --endpoint-url=http://localhost:4566 \
      --region us-east-1
    ```
-
+   
+   2. **Then test the token refresh by sending a file sync message:**
    ```bash
    # File sync message
    aws sqs send-message \
@@ -115,7 +121,14 @@ No traces. No failures. No questions.
      --region us-east-1
    ```
    
-   You should see the message being processed in your application logs.
+   To correctly test with Microsoft, you'll need to:
+   
+   1. Register an application in the [Azure Portal](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade)
+   2. Create a client secret in the Azure Portal under "Certificates & secrets"
+   3. Update both `ONEDRIVE_CLIENT_ID` and `ONEDRIVE_CLIENT_SECRET` in your `.env` file
+   4. Obtain a real refresh token via OAuth flow (temporarily uncomment the get_access_token test in the OneDriveAuthorization handler)
+   
+   For local testing, you'll see error messages when trying to refresh the token since "example_refresh_token" is not valid.
 
 8. **Add test data**
    Connect to the database:

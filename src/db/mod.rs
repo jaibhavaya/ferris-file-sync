@@ -13,10 +13,7 @@ pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
 }
 
 pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
-    // Use SQLx's built-in migration instead of manual queries
-    sqlx::migrate!("./migrations")
-        .run(pool)
-        .await?;
-    
+    sqlx::migrate!("./migrations").run(pool).await?;
+
     Ok(())
 }

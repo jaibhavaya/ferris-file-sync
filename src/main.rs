@@ -1,14 +1,15 @@
 mod config;
 mod db;
 mod messages;
+mod onedrive;
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use aws_config::BehaviorVersion;
 use aws_sdk_sqs::{Client, Error as SqsError};
-use std::time::Duration;
 use chrono::Utc;
+use std::{cmp::min, time::Duration};
 
-use crate::messages::{MessageType, parse_message};
+use crate::messages::{parse_message, MessageType};
 
 #[tokio::main]
 async fn main() -> Result<(), SqsError> {
@@ -26,12 +27,12 @@ async fn main() -> Result<(), SqsError> {
     // Load AWS credentials and create SQS client
     let mut aws_config_builder = aws_config::defaults(BehaviorVersion::latest())
         .region(aws_types::region::Region::new(config.aws_region.clone()));
-    
+
     // Use local endpoint if specified (for development with LocalStack)
     if let Some(endpoint) = &config.s3_endpoint {
         aws_config_builder = aws_config_builder.endpoint_url(endpoint.clone());
     }
-    
+
     let aws_config = aws_config_builder.load().await;
     let client = Client::new(&aws_config);
 
@@ -80,45 +81,78 @@ async fn main() -> Result<(), SqsError> {
 
 /// Process an SQS message based on its type
 async fn process_message(
-    message_body: &str, 
+    message_body: &str,
     pool: &sqlx::PgPool,
-    config: &config::Config
+    config: &config::Config,
 ) -> Result<(), anyhow::Error> {
     // Parse the message
-    let message = parse_message(message_body)
-        .context("Failed to parse message")?;
-    
+    let message = parse_message(message_body).context("Failed to parse message")?;
+
+    // Initialize OneDrive client if needed
+    let onedrive_client = onedrive::OneDriveClient::new(
+        pool.clone(),
+        config.encryption_key.clone(),
+        config.onedrive_client_id.clone(),
+        config.onedrive_client_secret.clone(),
+    );
+
     // Handle different message types
     match message {
         MessageType::OneDriveAuthorization { payload } => {
-            println!("Handling OneDrive authorization for owner: {}, user: {}", 
-                     payload.owner_id, payload.user_id);
-            
-            // Store the refresh token
+            println!(
+                "Handling OneDrive authorization for owner: {}, user: {}",
+                payload.owner_id, payload.user_id
+            );
+
+            // First store the refresh token
             db::onedrive::save_refresh_token(
                 pool,
                 payload.owner_id,
                 payload.user_id,
                 &payload.refresh_token,
-                &config.encryption_key
-            ).await
+                &config.encryption_key,
+            )
+            .await
             .context("Failed to save OneDrive refresh token")?;
-            
-            println!("OneDrive authorization saved for owner: {}", payload.owner_id);
-        },
-        
+
+            println!("OneDrive refresh token saved for owner: {}", payload.owner_id);
+
+            // Immediately validate the token by trying to get an access token
+            match onedrive_client.get_access_token(payload.owner_id).await {
+                Ok(access_token) => {
+                    println!("Successfully validated refresh token and obtained access token");
+                    println!("Access token: {}...", &access_token[0..min(20, access_token.len())]);
+                    println!("OneDrive integration is now ready for use");
+                }
+                Err(e) => {
+                    println!("Warning: Saved refresh token, but token validation failed: {}", e);
+                    println!("The refresh token may be invalid or expired");
+                    // We don't return an error here as we've saved the token, but log the warning
+                }
+            }
+        }
+
         MessageType::FileSync { payload } => {
             println!("Handling file sync request for owner: {}", payload.owner_id);
             println!("  - Source: s3://{}/{}", payload.bucket, payload.key);
             println!("  - Destination: {}", payload.destination);
-            
-            // TODO: Implement file sync logic
-            // 1. Check if we have a valid OneDrive integration for this owner
-            // 2. Download the file from S3
-            // 3. Upload the file to OneDrive
-            // 4. Update the file status in the database
-        },
+
+            // First, check if we have a valid integration with OneDrive by trying to get an access token
+            match onedrive_client.get_access_token(payload.owner_id).await {
+                Ok(access_token) => {
+                    println!("Successfully obtained access token: {}...", &access_token[0..20]);
+                    // TODO: Implement file sync logic once token refresh is working
+                    // 1. Download the file from S3
+                    // 2. Upload the file to OneDrive
+                    // 3. Update the file status in the database
+                }
+                Err(e) => {
+                    println!("Error getting access token: {}", e);
+                    return Err(anyhow::anyhow!("Failed to get OneDrive access token: {}", e));
+                }
+            }
+        }
     }
-    
+
     Ok(())
 }
