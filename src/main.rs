@@ -19,7 +19,15 @@ async fn main() -> Result<(), Error> {
     db::run_migrations(&pool).await.expect("Failed to run migrations");
 
     // Load AWS credentials and create SQS client
-    let aws_config = aws_config::defaults(BehaviorVersion::latest()).load().await;
+    let mut aws_config_builder = aws_config::defaults(BehaviorVersion::latest())
+        .region(aws_types::region::Region::new(config.aws_region.clone()));
+
+    // Use local endpoint if specified (for development with LocalStack)
+    if let Some(endpoint) = &config.s3_endpoint {
+        aws_config_builder = aws_config_builder.endpoint_url(endpoint.clone());
+    }
+
+    let aws_config = aws_config_builder.load().await;
     let client = Client::new(&aws_config);
 
     println!("Ferris File Sync SQS Consumer starting...");
