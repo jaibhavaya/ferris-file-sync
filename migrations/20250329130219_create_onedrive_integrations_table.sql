@@ -1,9 +1,10 @@
 CREATE TABLE IF NOT EXISTS onedrive_integrations (
     id SERIAL PRIMARY KEY,
-    owner_id UUID NOT NULL,
-    encrypted_token TEXT NOT NULL,    -- Base64-encoded encrypted access token
-    token_expires_at TIMESTAMPTZ NOT NULL, -- When the token expires
-    drive_id TEXT,                    -- OneDrive drive ID (can be null)
+    owner_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,          -- ID of the user who authorized this integration
+    encrypted_refresh_token TEXT NOT NULL,  -- Encrypted refresh token (long-lived)
+    encrypted_access_token TEXT,            -- Encrypted access token (short-lived)
+    access_token_expires_at TIMESTAMPTZ,    -- When the access token expires
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

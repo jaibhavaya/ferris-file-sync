@@ -78,10 +78,39 @@ No traces. No failures. No questions.
    ```
    
    **Send a test message to the SQS queue:**
+   
    ```bash
+   # OneDrive authorization message
    aws sqs send-message \
      --queue-url http://localhost:4566/000000000000/ferris-file-sync-queue \
-     --message-body '{"bucket":"ferris-file-sync-bucket","key":"test-file.txt","destination":"/Documents/"}' \
+     --message-body '{
+       "event_type": "onedrive_authorization",
+       "payload": {
+         "refresh_token": "example_refresh_token",
+         "owner_id": 123,
+         "user_id": 456,
+         "timestamp": "2025-03-29T12:00:00Z"
+       }
+     }' \
+     --endpoint-url=http://localhost:4566 \
+     --region us-east-1
+   ```
+
+   ```bash
+   # File sync message
+   aws sqs send-message \
+     --queue-url http://localhost:4566/000000000000/ferris-file-sync-queue \
+     --message-body '{
+       "event_type": "file_sync",
+       "payload": {
+         "bucket": "ferris-file-sync-bucket",
+         "key": "test-file.txt",
+         "destination": "/Documents/",
+         "owner_id": 123,
+         "user_id": 456,
+         "timestamp": "2025-03-29T12:00:00Z"
+       }
+     }' \
      --endpoint-url=http://localhost:4566 \
      --region us-east-1
    ```
